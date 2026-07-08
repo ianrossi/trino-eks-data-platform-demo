@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: karpenter-smoke
+  namespace: default
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: karpenter-smoke
+  template:
+    metadata:
+      labels:
+        app: karpenter-smoke
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: pause
+          image: public.ecr.aws/eks-distro/kubernetes/pause:3.7
+          resources:
+            requests:
+              cpu: "1"
+              memory: 256Mi

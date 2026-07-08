@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trino
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://trinodb.github.io/charts
+    chart: trino
+    targetRevision: 1.42.2
+    helm:
+      valuesObject:
+        server:
+          workers: 2
+        coordinator:
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              memory: 2Gi
+          nodeSelector:
+            workload-class: data
+        worker:
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              memory: 2Gi
+          nodeSelector:
+            workload-class: data
+        catalogs:
+          memory: |-
+            connector.name=memory
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: trino
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

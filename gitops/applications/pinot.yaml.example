@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pinot
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://raw.githubusercontent.com/apache/pinot/master/helm
+    chart: pinot
+    targetRevision: 1.0.0
+    helm:
+      valuesObject:
+        cluster:
+          name: pinot-demo
+        controller:
+          external:
+            enabled: false
+          nodeSelector:
+            workload-class: data
+        broker:
+          external:
+            enabled: false
+          nodeSelector:
+            workload-class: data
+        server:
+          nodeSelector:
+            workload-class: data
+        minion:
+          replicaCount: 0
+          nodeSelector:
+            workload-class: data
+        zookeeper:
+          nodeSelector:
+            workload-class: data
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pinot
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

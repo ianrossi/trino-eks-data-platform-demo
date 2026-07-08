@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: trino-memory-smoke
+  namespace: trino
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        workload-class: data
+      containers:
+        - name: trino-cli
+          image: trinodb/trino:480
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -lc
+          args:
+            - |
+              set -euo pipefail
+              until /usr/bin/trino --server http://trino:8080 --execute "SELECT 1"; do
+                sleep 10
+              done
+              /usr/bin/trino --server http://trino:8080 --execute "CREATE SCHEMA IF NOT EXISTS memory.demo"
+              /usr/bin/trino --server http://trino:8080 --execute "DROP TABLE IF EXISTS memory.demo.orders"
+              /usr/bin/trino --server http://trino:8080 --execute "CREATE TABLE memory.demo.orders AS SELECT * FROM (VALUES (1, 'east', 125.50), (2, 'west', 80.00), (3, 'east', 42.25), (4, 'central', 100.00)) AS t(order_id, region, amount)"
+              /usr/bin/trino --server http://trino:8080 --execute "SELECT region, count(*) AS orders, sum(amount) AS revenue FROM memory.demo.orders GROUP BY region ORDER BY region"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: 512Mi
+            limits:
+              memory: 512Mi

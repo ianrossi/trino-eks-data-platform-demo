@@ -3,7 +3,7 @@
 This project is a hands-on interview-prep demo for building open source data
 infrastructure on Amazon EKS. It provisions an EKS cluster with Terraform,
 installs Karpenter for workload-aware node provisioning, bootstraps ArgoCD, and
-lays out the next deployment path for Trino, Spark, and Apache Pinot.
+deploys Trino, Spark Operator, and Apache Pinot with runnable sample pipelines.
 
 The point of the project is not to use managed data services. The point is to
 show how open source data systems can be run on Kubernetes in a repeatable,
@@ -18,8 +18,9 @@ well-architected way.
   queue, and node role.
 - Karpenter `EC2NodeClass` and `NodePool` for elastic data workloads.
 - ArgoCD installed in-cluster as the GitOps control plane.
-- Starter ArgoCD Application manifests for Karpenter NodePool, Trino, Spark
-  Operator, and Pinot.
+- ArgoCD Application manifests for Karpenter NodePool, Trino, Spark Operator,
+  and Pinot.
+- Demo pipelines for Spark, Trino, and Pinot.
 
 ## Architecture
 
@@ -70,6 +71,11 @@ terraform/
 kubernetes/karpenter/
   nodepool.yaml            # Live Karpenter NodePool/EC2NodeClass manifest
   smoke-workload.yaml      # Temporary workload to prove Karpenter launches nodes
+
+kubernetes/pipelines/
+  spark-pi.yaml                    # SparkApplication smoke test
+  trino-memory-smoke-job.yaml      # Trino SQL smoke test
+  pinot-airline-bootstrap-job.yaml # Pinot table bootstrap and ingestion
 
 gitops/
   apps/karpenter-nodepool/ # Kustomize app for ArgoCD once pushed to Git
@@ -186,16 +192,26 @@ The `gitops/applications/*.yaml.example` files are ready to use from the public
 repo URL. Remove the `.example` suffixes as desired, review the Helm values, and
 apply them to the `argocd` namespace.
 
-## Data Stack Plan
+## Data Stack Demo
 
 Use ArgoCD to deploy the data layer:
 
 - Trino through the Trino Helm chart.
-- Spark through the Apache Spark Kubernetes Operator Helm chart.
+- Spark through the Kubeflow Spark Operator Helm chart.
 - Pinot through the Apache Pinot Helm chart.
 
-Start with Trino and Spark Operator. Add Pinot after deciding storage and
-exposure settings because Pinot is stateful and creates persistent volumes.
+Then run the pipeline examples:
+
+```bash
+kubectl apply -f kubernetes/pipelines/spark-namespace.yaml
+kubectl apply -f kubernetes/pipelines/spark-pi.yaml
+kubectl apply -f kubernetes/pipelines/trino-memory-smoke-job.yaml
+kubectl delete job -n pinot pinot-airline-bootstrap --ignore-not-found
+kubectl apply -f kubernetes/pipelines/pinot-airline-bootstrap-job.yaml
+```
+
+See [docs/data-stack-demo.md](docs/data-stack-demo.md) for the full runbook,
+verification commands, and interview narrative.
 
 ## Interview Talking Points
 

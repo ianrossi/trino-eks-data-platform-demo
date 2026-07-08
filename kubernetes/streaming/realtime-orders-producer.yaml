@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: realtime-orders-producer
+  namespace: streaming
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: realtime-orders-producer
+  template:
+    metadata:
+      labels:
+        app: realtime-orders-producer
+    spec:
+      nodeSelector:
+        workload-class: data
+      containers:
+        - name: producer
+          image: redpandadata/redpanda:v26.1.12
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -lc
+          args:
+            - |
+              set -euo pipefail
+
+              until rpk topic list --brokers kafka.streaming.svc.cluster.local:9092 | grep -q 'realtime-orders'; do
+                sleep 5
+              done
+
+              carriers=(AA DL UA WN B6 AS)
+              origins=(JFK LAX ORD ATL DEN SFO SEA DFW)
+              dests=(BOS MIA PHX LAS IAH MSP CLT EWR)
+              i=0
+
+              while true; do
+                carrier=${carriers[$((i % ${#carriers[@]}))]}
+                origin=${origins[$((i % ${#origins[@]}))]}
+                dest=${dests[$(((i + 3) % ${#dests[@]}))]}
+                amount=$(awk -v i="$i" 'BEGIN { printf "%.2f", 85 + (i % 23) * 7.35 }')
+                ts=$(date +%s000)
+                printf '{"order_id":"ord-%06d","carrier_code":"%s","origin":"%s","dest":"%s","amount":%s,"event_time_millis":%s}\n' \
+                  "$i" "$carrier" "$origin" "$dest" "$amount" "$ts" |
+                  rpk topic produce realtime-orders \
+                    --brokers kafka.streaming.svc.cluster.local:9092
+                i=$((i + 1))
+                sleep 1
+              done
+          resources:
+            requests:
+              cpu: "100m"
+              memory: 256Mi
+            limits:
+              memory: 512Mi

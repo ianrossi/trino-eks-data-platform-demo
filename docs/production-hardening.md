@@ -27,6 +27,9 @@ the following areas before considering it complete.
 - Trino is stateless but needs catalog, secret, and query memory governance.
 - Spark needs namespace/RBAC boundaries and object storage credentials.
 - Pinot is stateful; define persistence, deep storage, PDBs, and backup strategy.
+- Kafka/Redpanda and Postgres are ephemeral in the demo; production needs
+  durable volumes, replication, retention policy, authentication/TLS, and
+  secret-backed credentials.
 
 ## GitOps
 

@@ -49,6 +49,11 @@ spec:
           pinot: |-
             connector.name=pinot
             pinot.controller-urls=pinot-controller.pinot.svc.cluster.local:9000
+          postgresql: |-
+            connector.name=postgresql
+            connection-url=jdbc:postgresql://postgresql.streaming.svc.cluster.local:5432/demo
+            connection-user=demo
+            connection-password=demo-password
   destination:
     server: https://kubernetes.default.svc
     namespace: trino

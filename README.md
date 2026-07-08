@@ -77,6 +77,11 @@ kubernetes/pipelines/
   trino-memory-smoke-job.yaml      # Trino SQL smoke test
   pinot-airline-bootstrap-job.yaml # Pinot table bootstrap and ingestion
 
+kubernetes/streaming/
+  kafka-compatible-redpanda.yaml   # Kafka-compatible Redpanda broker
+  realtime-orders-producer.yaml    # Synthetic live event producer
+  pinot-realtime-orders-job.yaml   # Pinot realtime schema/table setup
+
 gitops/
   apps/karpenter-nodepool/ # Kustomize app for ArgoCD once pushed to Git
   applications/            # ArgoCD Application examples
@@ -212,6 +217,9 @@ kubectl apply -f kubernetes/pipelines/pinot-airline-bootstrap-job.yaml
 
 See [docs/data-stack-demo.md](docs/data-stack-demo.md) for the full runbook,
 verification commands, and interview narrative.
+
+The realtime extension adds Redpanda, Postgres, a Pinot realtime table, and a
+Trino query that joins live stream facts with relational dimensions.
 
 ## Interview Talking Points
 

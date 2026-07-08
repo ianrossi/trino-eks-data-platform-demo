@@ -221,6 +221,17 @@ verification commands, and interview narrative.
 The realtime extension adds Redpanda, Postgres, a Pinot realtime table, and a
 Trino query that joins live stream facts with relational dimensions.
 
+For a live interview demo, use the supervised port-forward helper:
+
+```bash
+cd /path/to/trino-eks-project
+tmux new-session -d -s trino-demo-pf -n forwards \
+  "cd \"$PWD\" && scripts/demo_port_forwards.sh"
+```
+
+It keeps ArgoCD on `https://localhost:8080`, Trino on
+`http://localhost:8081/ui/`, and Pinot on `http://localhost:9000`.
+
 ## Interview Talking Points
 
 - Separate system capacity from elastic data workload capacity.

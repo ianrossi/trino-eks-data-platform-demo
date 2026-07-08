@@ -171,6 +171,30 @@ both without moving the data into one database first.
 
 ## Access UIs
 
+For interview/demo use, prefer the supervised local port-forward script:
+
+```bash
+cd /path/to/trino-eks-project
+tmux new-session -d -s trino-demo-pf -n forwards \
+  "cd \"$PWD\" && scripts/demo_port_forwards.sh"
+```
+
+It keeps these local URLs available and reconnects if a port-forward drops:
+
+- ArgoCD: `https://localhost:8080`
+- Trino: `http://localhost:8081/ui/`
+- Pinot Controller: `http://localhost:9000`
+
+Check or stop it with:
+
+```bash
+tmux ls
+tmux attach -t trino-demo-pf
+tmux kill-session -t trino-demo-pf
+```
+
+Manual one-off commands are still useful for troubleshooting:
+
 ArgoCD:
 
 ```bash

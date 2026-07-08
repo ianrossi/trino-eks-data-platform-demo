@@ -55,8 +55,8 @@ spec:
           values: ["3"]
       expireAfter: 720h
   disruption:
-    consolidationPolicy: WhenEmptyOrUnderutilized
-    consolidateAfter: 60s
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 30m
   limits:
     cpu: "20"
     memory: 80Gi

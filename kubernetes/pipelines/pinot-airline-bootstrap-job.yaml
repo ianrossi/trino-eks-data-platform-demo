@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pinot-airline-bootstrap
+  namespace: pinot
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      nodeSelector:
+        workload-class: data
+      containers:
+        - name: bootstrap
+          image: apachepinot/pinot:1.0.0
+          imagePullPolicy: IfNotPresent
+          workingDir: /opt/pinot
+          env:
+            - name: JAVA_OPTS
+              value: "-Xms512m -Xmx3g"
+          command:
+            - /bin/sh
+            - -lc
+          args:
+            - |
+              set -eu
+
+              /opt/pinot/bin/pinot-admin.sh BootstrapTable \
+                -dir examples/batch/airlineStats \
+                -controllerHost pinot-controller \
+                -controllerPort 9000 || true
+
+              cp /opt/pinot/examples/batch/airlineStats/ingestionJobSpec.yaml /tmp/ingestionJobSpec.yaml
+              sed -i 's|http://localhost:9000|http://pinot-controller:9000|g' /tmp/ingestionJobSpec.yaml
+
+              /opt/pinot/bin/pinot-admin.sh LaunchDataIngestionJob \
+                -jobSpecFile /tmp/ingestionJobSpec.yaml
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+            limits:
+              memory: 4Gi

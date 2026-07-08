@@ -12,31 +12,49 @@ spec:
     helm:
       valuesObject:
         server:
-          workers: 2
+          workers: 1
+        additionalConfigProperties:
+          - retry-policy=QUERY
         coordinator:
+          jvm:
+            maxHeapSize: 1G
+          config:
+            query:
+              maxMemoryPerNode: 512MB
           resources:
             requests:
-              cpu: "1"
-              memory: 2Gi
+              cpu: "500m"
+              memory: 1536Mi
             limits:
-              memory: 2Gi
+              memory: 1536Mi
           nodeSelector:
             workload-class: data
         worker:
+          jvm:
+            maxHeapSize: 1G
+          config:
+            query:
+              maxMemoryPerNode: 512MB
           resources:
             requests:
-              cpu: "1"
-              memory: 2Gi
+              cpu: "500m"
+              memory: 1536Mi
             limits:
-              memory: 2Gi
+              memory: 1536Mi
           nodeSelector:
             workload-class: data
         catalogs:
           memory: |-
             connector.name=memory
+          pinot: |-
+            connector.name=pinot
+            pinot.controller-urls=pinot-controller.pinot.svc.cluster.local:9000
   destination:
     server: https://kubernetes.default.svc
     namespace: trino
   syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true

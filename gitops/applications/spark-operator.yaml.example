@@ -6,31 +6,33 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://apache.github.io/spark-kubernetes-operator
-    chart: spark-kubernetes-operator
-    targetRevision: 1.7.0
+    repoURL: https://kubeflow.github.io/spark-operator
+    chart: spark-operator
+    targetRevision: 2.1.1
     helm:
       valuesObject:
-        operatorDeployment:
-          operatorPod:
-            nodeSelector:
-              workload-class: data
-            operatorContainer:
-              resources:
-                requests:
-                  cpu: "500m"
-                  memory: 1Gi
-                limits:
-                  memory: 1Gi
-        workloadResources:
-          namespaces:
-            create: true
-            overrideWatchedNamespaces: true
-            data:
-              - spark
+        controller:
+          nodeSelector:
+            workload-class: data
+          resources:
+            requests:
+              cpu: "200m"
+              memory: 512Mi
+            limits:
+              memory: 512Mi
+        webhook:
+          enable: false
+        spark:
+          jobNamespaces:
+            - spark
   destination:
     server: https://kubernetes.default.svc
     namespace: spark-operator
   syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
+      - Replace=true

@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: postgresql
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: postgresql
+    targetRevision: 18.7.12
+    helm:
+      valuesObject:
+        auth:
+          username: demo
+          password: demo-password
+          database: demo
+        primary:
+          persistence:
+            enabled: false
+          initdb:
+            scripts:
+              01-carriers.sql: |
+                CREATE TABLE IF NOT EXISTS carrier_dim (
+                  carrier_code text PRIMARY KEY,
+                  carrier_name text NOT NULL,
+                  alliance text NOT NULL
+                );
+
+                INSERT INTO carrier_dim (carrier_code, carrier_name, alliance) VALUES
+                  ('AA', 'American Airlines', 'oneworld'),
+                  ('DL', 'Delta Air Lines', 'skyteam'),
+                  ('UA', 'United Airlines', 'star alliance'),
+                  ('WN', 'Southwest Airlines', 'none'),
+                  ('B6', 'JetBlue Airways', 'none'),
+                  ('AS', 'Alaska Airlines', 'oneworld')
+                ON CONFLICT (carrier_code) DO UPDATE
+                SET carrier_name = EXCLUDED.carrier_name,
+                    alliance = EXCLUDED.alliance;
+          resources:
+            requests:
+              cpu: "250m"
+              memory: 512Mi
+            limits:
+              memory: 768Mi
+          nodeSelector:
+            workload-class: data
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: streaming
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true

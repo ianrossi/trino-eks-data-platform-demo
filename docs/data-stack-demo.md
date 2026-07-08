@@ -103,6 +103,72 @@ On the demo cluster, the stack produced:
 - Trino returned `9746` rows from `pinot.default.airlinestats`.
 - Karpenter launched Spot data nodes for the service pods and the Pinot ingestion job.
 
+## Realtime Extension
+
+The realtime demo adds a Kafka-compatible stream and a relational dimension
+store:
+
+```text
+Redpanda
+  Kafka-compatible topic: realtime-orders
+
+Synthetic producer
+  Writes one JSON order event per second
+
+Pinot realtime table
+  Consumes realtime-orders from Redpanda
+
+Postgres
+  Stores carrier_dim reference data
+
+Trino
+  Joins Pinot realtime facts to Postgres dimensions
+```
+
+Deploy the supporting services:
+
+```bash
+kubectl apply -f gitops/applications/postgresql.yaml.example
+kubectl apply -f gitops/applications/trino.yaml.example
+kubectl apply -k kubernetes/streaming
+```
+
+Verify Redpanda and the producer:
+
+```bash
+kubectl get pods -n streaming
+kubectl logs -n streaming deploy/realtime-orders-producer --tail=20
+```
+
+Verify Pinot is consuming realtime rows:
+
+```bash
+kubectl exec -n pinot pinot-broker-0 -- \
+  curl -sS -X POST -H 'Content-Type: application/json' \
+  -d '{"sql":"select count(*) from realtimeOrders"}' \
+  http://localhost:8099/query/sql
+```
+
+Verify Trino can see both catalogs:
+
+```bash
+kubectl exec -n trino deploy/trino-coordinator -- \
+  /usr/bin/trino --server http://localhost:8080 \
+  --execute 'SHOW TABLES FROM pinot.default; SHOW TABLES FROM postgresql.public'
+```
+
+Run the federated realtime join:
+
+```bash
+kubectl exec -n trino deploy/trino-coordinator -- \
+  /usr/bin/trino --server http://localhost:8080 \
+  --execute "SELECT d.carrier_name, d.alliance, count(*) AS realtime_orders, round(sum(o.amount), 2) AS revenue FROM pinot.default.realtimeorders o JOIN postgresql.public.carrier_dim d ON o.carrier_code = d.carrier_code GROUP BY d.carrier_name, d.alliance ORDER BY realtime_orders DESC"
+```
+
+This demonstrates the interview-relevant pattern: Pinot serves fresh events from
+a Kafka-compatible stream, Postgres holds dimensions, and Trino federates across
+both without moving the data into one database first.
+
 ## Access UIs
 
 ArgoCD:
@@ -141,4 +207,6 @@ For production, Pinot should not use ephemeral storage. This demo disables
 Pinot persistence because the current cluster has EFS CSI but not EBS CSI.
 Production Pinot should use persistent volumes, deep storage, backups, pod
 disruption budgets, and clearer workload separation between ingestion and
-serving nodes.
+serving nodes. The realtime extension also uses ephemeral Redpanda and Postgres
+storage; production should use durable volumes, topic retention policy,
+replication, secrets management, and proper authentication/TLS.

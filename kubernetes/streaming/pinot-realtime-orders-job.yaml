@@ -1,0 +1,97 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pinot-realtime-orders
+  namespace: pinot
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      nodeSelector:
+        workload-class: data
+      containers:
+        - name: configure-table
+          image: curlimages/curl:8.10.1
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -lc
+          args:
+            - |
+              set -eu
+
+              until curl -fsS http://pinot-controller:9000/tables >/dev/null; do
+                sleep 5
+              done
+
+              cat >/tmp/realtime-orders-schema.json <<'EOF'
+              {
+                "schemaName": "realtimeOrders",
+                "dimensionFieldSpecs": [
+                  {"name": "order_id", "dataType": "STRING"},
+                  {"name": "carrier_code", "dataType": "STRING"},
+                  {"name": "origin", "dataType": "STRING"},
+                  {"name": "dest", "dataType": "STRING"}
+                ],
+                "metricFieldSpecs": [
+                  {"name": "amount", "dataType": "DOUBLE"}
+                ],
+                "dateTimeFieldSpecs": [
+                  {
+                    "name": "event_time_millis",
+                    "dataType": "LONG",
+                    "format": "1:MILLISECONDS:EPOCH",
+                    "granularity": "1:MILLISECONDS"
+                  }
+                ]
+              }
+              EOF
+
+              cat >/tmp/realtime-orders-table.json <<'EOF'
+              {
+                "tableName": "realtimeOrders",
+                "tableType": "REALTIME",
+                "segmentsConfig": {
+                  "schemaName": "realtimeOrders",
+                  "timeColumnName": "event_time_millis",
+                  "timeType": "MILLISECONDS",
+                  "replication": "1",
+                  "replicasPerPartition": "1"
+                },
+                "tenants": {
+                  "broker": "DefaultTenant",
+                  "server": "DefaultTenant"
+                },
+                "tableIndexConfig": {
+                  "loadMode": "MMAP",
+                  "streamConfigs": {
+                    "streamType": "kafka",
+                    "stream.kafka.consumer.type": "lowLevel",
+                    "stream.kafka.topic.name": "realtime-orders",
+                    "stream.kafka.decoder.class.name": "org.apache.pinot.plugin.stream.kafka.KafkaJSONMessageDecoder",
+                    "stream.kafka.consumer.factory.class.name": "org.apache.pinot.plugin.stream.kafka20.KafkaConsumerFactory",
+                    "stream.kafka.broker.list": "kafka.streaming.svc.cluster.local:9092",
+                    "stream.kafka.consumer.prop.auto.offset.reset": "smallest",
+                    "realtime.segment.flush.threshold.rows": "0",
+                    "realtime.segment.flush.threshold.time": "24h",
+                    "realtime.segment.flush.threshold.segment.size": "50M"
+                  }
+                },
+                "metadata": {}
+              }
+              EOF
+
+              curl -fsS -X POST -H 'Content-Type: application/json' \
+                --data @/tmp/realtime-orders-schema.json \
+                http://pinot-controller:9000/schemas || true
+
+              curl -fsS -X POST -H 'Content-Type: application/json' \
+                --data @/tmp/realtime-orders-table.json \
+                http://pinot-controller:9000/tables || true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: 128Mi
+            limits:
+              memory: 256Mi
